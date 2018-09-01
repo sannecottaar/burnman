@@ -41,6 +41,7 @@ class SolidSolution(Mineral):
                  energy_interaction=None,
                  volume_interaction=None,
                  entropy_interaction=None,
+                 dentropydT_interaction=None,
                  alphas=None,
                  molar_fractions=None):
         """
@@ -77,6 +78,8 @@ class SolidSolution(Mineral):
             self.volume_interaction = volume_interaction
         if entropy_interaction is not None:
             self.entropy_interaction = entropy_interaction
+        if dentropydT_interaction is not None:
+            self.dentropydT_interaction = dentropydT_interaction
         if alphas is not None:
             self.alphas = alphas
         if endmembers is not None:
@@ -113,6 +116,9 @@ class SolidSolution(Mineral):
                 elif self.solution_type == 'subregular':
                     self.solution_model = SubregularSolution(
                         self.endmembers, self.energy_interaction, self.volume_interaction, self.entropy_interaction)
+                elif self.solution_type == 'boukare':
+                    self.solution_model = AsymmetricRegularSolutionBoukare(
+                        self.endmembers, self.alphas, self.energy_interaction, self.volume_interaction, self.entropy_interaction, self.dentropydT_interaction)
                 else:
                     raise Exception(
                         "Solution model type " + self.solution_type + "not recognised.")

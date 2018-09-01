@@ -647,3 +647,117 @@ class SubregularSolution (IdealSolution):
 
     def activities(self, pressure, temperature, molar_fractions):
         return IdealSolution.activities(self, pressure, temperature, molar_fractions) * self.activity_coefficients(pressure, temperature, molar_fractions)
+
+
+class AsymmetricRegularSolutionBoukare (IdealSolution):
+
+    """
+    Solution model implementing the asymmetric regular solution model formulation as described in :cite:`HP2003`.
+    """
+
+    def __init__(self, endmembers, alphas, energy_interaction, volume_interaction=None, entropy_interaction=None, dentropydT_interaction=None):
+
+        self.n_endmembers = len(endmembers)
+
+        # Create array of van Laar parameters
+        self.alphas = np.array(alphas)
+
+        # Create 2D arrays of interaction parameters
+        self.We = np.triu(2. / (self.alphas[:, np.newaxis] + self.alphas), 1)
+        self.We[np.triu_indices(self.n_endmembers, 1)] *= np.array([i for row in energy_interaction
+                                                                for i in row])
+
+        if entropy_interaction is not None:
+            self.Ws = np.triu(2. / (self.alphas[:, np.newaxis] + self.alphas), 1)
+            self.Ws[np.triu_indices(self.n_endmembers, 1)] *= np.array([i for row in entropy_interaction
+                                                                        for i in row])
+        else:
+            self.Ws = np.zeros((self.n_endmembers, self.n_endmembers))
+
+        if volume_interaction is not None:
+            self.Wv = np.triu(2. / (self.alphas[:, np.newaxis] + self.alphas), 1)
+            self.Wv[np.triu_indices(self.n_endmembers, 1)] *= np.array([i for row in volume_interaction
+                                                                        for i in row])
+        else:
+            self.Wv = np.zeros((self.n_endmembers, self.n_endmembers))
+
+        if dentropydT_interaction is not None:
+            self.WdsdT = np.triu(2. / (self.alphas[:, np.newaxis] + self.alphas), 1)
+            self.WdsdT[np.triu_indices(self.n_endmembers, 1)] *= np.array([i for row in dentropydT_interaction
+                                                                        for i in row])
+        else:
+            self.WdsdT = np.zeros((self.n_endmembers, self.n_endmembers))
+
+        # initialize ideal solution model
+        IdealSolution.__init__(self, endmembers)
+
+    def _phi(self, molar_fractions):
+        phi = self.alphas*molar_fractions
+        phi = np.divide(phi, np.sum(phi))
+        return phi
+
+
+    def _non_ideal_interactions(self, W, molar_fractions):
+        # -sum(sum(qi.qj.Wij*)
+        # equation (2) of Holland and Powell 2003
+        phi = self._phi(molar_fractions)
+        return _non_ideal_interactions_fct(phi, molar_fractions, self.n_endmembers, self.alphas, W)
+
+    def _non_ideal_excess_partial_gibbs(self, pressure, temperature, molar_fractions):
+        Eint = self._non_ideal_interactions(self.We, molar_fractions)
+        Sint = self._non_ideal_interactions(self.Ws, molar_fractions)
+        dSdTint = self._non_ideal_interactions(self.WdsdT, molar_fractions)
+        Vint = self._non_ideal_interactions(self.Wv, molar_fractions)
+        return Eint - temperature * (Sint + temperature*dSdTint) + pressure * Vint
+
+    def excess_partial_gibbs_free_energies(self, pressure, temperature, molar_fractions):
+        ideal_gibbs = IdealSolution._ideal_excess_partial_gibbs(
+            self, temperature, molar_fractions)
+        non_ideal_gibbs = self._non_ideal_excess_partial_gibbs(
+            pressure, temperature, molar_fractions)
+        return ideal_gibbs + non_ideal_gibbs
+
+    def excess_partial_entropies(self, pressure, temperature, molar_fractions):
+        ideal_entropies = IdealSolution._ideal_excess_entropies(
+            self, temperature, molar_fractions)
+        non_ideal_entropies = self._non_ideal_interactions(self.Ws + temperature*self.WdsdT,
+                                                           molar_fractions)
+        return ideal_entropies + non_ideal_entropies
+
+    def excess_partial_volumes(self, pressure, temperature, molar_fractions):
+        return self._non_ideal_interactions(self.Wv, molar_fractions)
+
+    def gibbs_hessian(self, pressure, temperature, molar_fractions):
+        ideal_entropy_hessian = IdealSolution._ideal_entropy_hessian(self, temperature, molar_fractions)
+        phi = self._phi(molar_fractions)
+        nonideal_gibbs_hessian = _non_ideal_hessian_fct(phi, molar_fractions,
+                                                        self.n_endmembers, self.alphas,
+                                                        (self.We -
+                                                         temperature*(self.Ws +
+                                                                      temperature*self.WdsdT) +
+                                                         pressure*self.Wv))
+
+        return nonideal_gibbs_hessian - temperature*ideal_entropy_hessian
+
+    def entropy_hessian(self, pressure, temperature, molar_fractions):
+        ideal_entropy_hessian = IdealSolution._ideal_entropy_hessian(self, temperature, molar_fractions)
+        phi = self._phi(molar_fractions)
+        nonideal_entropy_hessian = _non_ideal_hessian_fct(phi, molar_fractions,
+                                                          self.n_endmembers, self.alphas,
+                                                          self.Ws + temperature*self.WdsdT)
+        return ideal_entropy_hessian + nonideal_entropy_hessian
+
+    def volume_hessian(self, pressure, temperature, molar_fractions):
+        phi = self._phi(molar_fractions)
+        return _non_ideal_hessian_fct(phi, molar_fractions,
+                                      self.n_endmembers, self.alphas,
+                                      self.Wv)
+
+    def activity_coefficients(self, pressure, temperature, molar_fractions):
+        if temperature > 1.e-10:
+            return np.exp(self._non_ideal_excess_partial_gibbs(pressure, temperature, molar_fractions) / (constants.gas_constant * temperature))
+        else:
+            raise Exception("Activity coefficients not defined at 0 K.")
+
+    def activities(self, pressure, temperature, molar_fractions):
+        return IdealSolution.activities(self, pressure, temperature, molar_fractions) * self.activity_coefficients(pressure, temperature, molar_fractions)

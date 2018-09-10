@@ -53,3 +53,4 @@ from . import ICL_2018
 
 # Other
 from . import other
+from . import boukare

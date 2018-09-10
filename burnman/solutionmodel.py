@@ -397,10 +397,6 @@ class IdealSolution (SolutionModel):
         hessian = -constants.gas_constant * self._log_ideal_activity_derivatives(molar_fractions)
         return hessian
 
-    def _ideal_hessian(self, temperature, molar_fractions):
-        hessian = constants.gas_constant * temperature * self._log_ideal_activity_derivatives(molar_fractions)
-        return hessian
-
     def _log_ideal_activities(self, molar_fractions):
         site_occupancies = np.dot(molar_fractions, self.endmember_occupancies)
         lna = (self.endmember_occupancies * self.site_multiplicities *
@@ -718,7 +714,7 @@ class AsymmetricRegularSolutionBoukare (IdealSolution):
         return ideal_gibbs + non_ideal_gibbs
 
     def excess_partial_entropies(self, pressure, temperature, molar_fractions):
-        ideal_entropies = IdealSolution._ideal_excess_entropies(
+        ideal_entropies = IdealSolution._ideal_excess_partial_entropies(
             self, temperature, molar_fractions)
         non_ideal_entropies = self._non_ideal_interactions(self.Ws + temperature*self.WdsdT,
                                                            molar_fractions)

@@ -18,6 +18,10 @@ from . import vinet
 from . import morse_potential
 from . import reciprocal_kprime
 from . import aa
+from . import boukare_feo
+from . import boukare_mgo
+from . import boukare_sio2
+
 from .equation_of_state import EquationOfState
 
 class CombinedMineralMethod(object):
@@ -46,6 +50,12 @@ def create(method):
             return reciprocal_kprime.RKprime()
         elif method == "aa":
             return aa.AA()
+        elif method == "boukare_feo":
+            return boukare_feo.BOUKARE_FEO()
+        elif method == "boukare_mgo":
+            return boukare_mgo.BOUKARE_MGO()
+        elif method == "boukare_sio2":
+            return boukare_sio2.BOUKARE_SIO2()
         elif method == "mgd2":
             return mgd.MGD2()
         elif method == "mgd3":

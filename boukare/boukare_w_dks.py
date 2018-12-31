@@ -12,36 +12,18 @@ if not os.path.exists('burnman') and os.path.exists('../burnman'):
 
 import burnman
 from burnman.equilibrate import equilibrate
-from burnman.minerals.boukare import bridgmanite_boukare, ferropericlase_boukare, stishovite_boukare, melt_boukare
+from burnman.minerals.boukare import wuestite_boukare, melt_mixed
+from burnman.minerals.DKS_2013_solids import periclase, stishovite
 
+per = periclase()
+wus = wuestite_boukare()
+stv = stishovite()
+liq = melt_mixed()
 
-fper = ferropericlase_boukare()
-bdg = bridgmanite_boukare()
-stv = stishovite_boukare()
-liq = melt_boukare()
-
-
-per = fper.endmembers[0][0]
-wus = fper.endmembers[1][0]
 
 liq_FeO = liq.endmembers[0][0]
 liq_MgO = liq.endmembers[1][0]
 liq_SiO2 = liq.endmembers[2][0]
-
-for m in [liq_MgO, liq_SiO2]:
-    if not burnman.tools.check_eos_consistency(m, 10.e9, 3000.):
-        burnman.tools.check_eos_consistency(m, 10.e9, 3000., verbose=True)
-        raise Exception('{0} EoS invalid'.format(m.name))
-
-
-liq_SiO2.params['S_0'] -= 15.
-T = 3650.
-liq_SiO2.set_state(20.e9, T)
-stv.set_state(20.e9, T)
-print(stv.gibbs, liq_SiO2.gibbs)
-
-liq_SiO2.params['F_0'] += stv.gibbs - liq_SiO2.gibbs
-
 
 props = []
 for m in [liq_MgO, liq_SiO2, liq_FeO]:
@@ -56,7 +38,6 @@ p = [1447.2, -0.24865, 10.27e6, -1.1258]
 P_st = lambda p, x: p[0]*np.exp(p[1]*x) + p[2]*np.exp(p[3]*x)
 print(P_st(p, 27.4))
 
-
 fig = plt.figure()
 ax = [fig.add_subplot(2, 2, i) for i in range(1, 5)]
 
@@ -65,7 +46,7 @@ boukare_sio2_energies = mpimg.imread('boukare_sio2_energies.png')
 boukare_sio2_akts = mpimg.imread('boukare_sio2_akts.png')
 boukare_sio2_cvs = mpimg.imread('boukare_sio2_cvs.png')
 
-ax[0].imshow(boukare_sio2_volumes, extent=[10., 30., -0.3, 300], aspect='auto')
+ax[0].imshow(boukare_sio2_volumes, extent=[10., 30., 0, 300], aspect='auto')
 ax[1].imshow(boukare_sio2_energies, extent=[10., 30., -2400., -500.], aspect='auto')
 ax[2].imshow(boukare_sio2_cvs, extent=[7., 33., 120., 170.], aspect='auto')
 ax[3].imshow(boukare_sio2_akts, extent=[10., 30., 0., 0.02], aspect='auto')
@@ -73,21 +54,17 @@ ax[3].imshow(boukare_sio2_akts, extent=[10., 30., 0., 0.02], aspect='auto')
 volumes = np.linspace(10., 30., 101)
 ax[0].plot(volumes, P_st(p, volumes), linestyle=':', linewidth=8.)
 
-stv2 = burnman.minerals.SLB_2011.stishovite()
-
 pressures = np.linspace(5.e9, 200.e9, 101)
 for T in np.linspace(2000., 7000., 6):
     temperatures = T + pressures*0.
-
-    
     G, E, V, K_T, alpha, C_v = liq_SiO2.evaluate(['gibbs', 'molar_internal_energy', 'V', 'K_T', 'alpha', 'C_v'], pressures, temperatures)
-    ax[0].plot(V*1.e6, pressures/1.e9, linestyle='--', linewidth=2.)
-    ax[1].plot(V*1.e6, E/1000. - 1640., linestyle='--', linewidth=2.)
-    ax[2].plot(V*1.e6, C_v, linestyle='--', linewidth=2.)
+    ax[0].plot(V*1.e6, pressures/1.e9)
+    ax[1].plot(V*1.e6, E/1000.)
+    ax[2].plot(V*1.e6, C_v)
     ax[2].plot([0., 30.], [104.51, 104.51+30.e3*0.1353e-2], linestyle=':')
     ax[2].plot([0., 30.], [104.51+0.6e-4*10000.,
                            104.51+30.e3*0.1353e-2 + 0.6e-4*10000.], linestyle=':')
-    ax[3].plot(V*1.e6, alpha*K_T/1.e9, linestyle='--', linewidth=2.)
+    ax[3].plot(V*1.e6, alpha*K_T/1.e9)
 
 ax[0].scatter(liq_SiO2.params['V_0']*1.e6, 1.e-4)
 
@@ -95,37 +72,13 @@ plt.show()
 
 
 
+for m in [liq_MgO, liq_SiO2]:
+    if not burnman.tools.check_eos_consistency(m, 20.e9, 4000.):
+        burnman.tools.check_eos_consistency(m, 20.e9, 4000., verbose=True)
+        raise Exception('{0} EoS invalid'.format(m.name))
 
 
-fper.set_composition([0.9, 0.1])
-fper.set_state(100.e9, 2000)
 
-
-#bdg = burnman.minerals.SLB_2011.mg_fe_perovskite()
-#fper = burnman.minerals.SLB_2011.ferropericlase()
-# M_FeO = 0.071844 kg/mol
-
-#bdg.guess = np.array([0.985, 0.015, 0.0])
-bdg.guess = np.array([0.985, 0.015])
-fper.guess = np.array([0.90, 0.10])
-
-
-pressures = np.linspace(40.e9, 140.e9, 6)
-for press in pressures:
-    temperatures = np.linspace(2000., 4000., 21)
-    composition = {'Fe': 0.2, 'Mg': 1.8, 'Si': 1.5, 'O': 5.}
-    assemblage = burnman.Composite([bdg, fper])
-    equality_constraints = [('P', press), ('T', temperatures)]
-    sol, prm = equilibrate(composition, assemblage, equality_constraints, store_iterates=False)
-    P, T, x_bdg, p_fbdg, x_per, p_wus = np.array([s.x for s in sol]).T
-
-    plt.plot(T, p_fbdg*(1. - p_wus)/((1. - p_fbdg)*p_wus), label='{0} GPa'.format(press/1.e9))
-
-plt.legend(loc='best')
-plt.xlabel('Temperature (K)')
-plt.ylabel('[p$_{FeSiO_3}$p$_{MgO}$]/[p$_{MgSiO_3}$p$_{FeO}$]')
-plt.savefig('Fe_Mg_partitioning_Boukare_solids.pdf')
-plt.show()
 
 
 FeO_melting_curve = np.loadtxt('boukare_melting_curves_FeO.dat')

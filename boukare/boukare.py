@@ -34,6 +34,7 @@ for m in [liq_MgO, liq_SiO2]:
         raise Exception('{0} EoS invalid'.format(m.name))
 
 
+"""
 liq_SiO2.params['S_0'] -= 15.
 T = 3650.
 liq_SiO2.set_state(20.e9, T)
@@ -41,7 +42,8 @@ stv.set_state(20.e9, T)
 print(stv.gibbs, liq_SiO2.gibbs)
 
 liq_SiO2.params['F_0'] += stv.gibbs - liq_SiO2.gibbs
-
+print(stv.gibbs - liq_SiO2.gibbs)
+"""
 
 props = []
 for m in [liq_MgO, liq_SiO2, liq_FeO]:

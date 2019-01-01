@@ -221,6 +221,32 @@ class SiO2_liquid_boukare(Mineral):
             'n': sum(formula.values()),
             'molar_mass': formula_mass(formula)}
         Mineral.__init__(self)
+
+
+class SiO2_liquid_boukare_tweaked(Mineral):
+    """
+    SiO2 liquid
+    Boukare et al. (2015)
+    energy and entropy tweaked
+    """
+    def __init__(self):
+        formula = 'SiO2'
+        formula = dictionarize_formula(formula)
+        self.params = {
+            'name': 'SiO2 liquid (Boukare et al., 2015)',
+            'formula': formula,
+            'T_0': 4000.,
+            'V_0': 27.4e-6, 
+            'p': np.array([1447.2*1.e9, -0.24865*1.e6, 10.27e6*1.e9, -1.1258*1.e6]),
+            'f': np.array([7.45e9*pow(1.e6, -2.701), -2.701]),
+            'S_0': 275. - 15.,
+            'Cv': np.array([0.10451, 0.1353e-2*1.e6, 0.6e-7])*1000.,
+            'F_0': -2030.3e3 + 545700.,
+            'equation_of_state': 'boukare_sio2',
+            'n': sum(formula.values()),
+            'molar_mass': formula_mass(formula)}
+        Mineral.__init__(self)
+        
         
 class ferropericlase_boukare(SolidSolution):
     def __init__(self, molar_fractions=None):
@@ -265,7 +291,7 @@ class melt_boukare(SolidSolution):
         self.solution_type = 'boukare'
         self.endmembers = [[FeO_liquid_boukare(), '[Fe]O'],
                            [MgO_liquid_boukare(), '[Mg]O'],
-                           [SiO2_liquid_boukare(), '[Si]O2']]
+                           [SiO2_liquid_boukare_tweaked(), '[Si]O2']]
         self.energy_interaction = [[0., E0_23],
                                    [E0_13]]
         self.volume_interaction = [[0., V0_23],

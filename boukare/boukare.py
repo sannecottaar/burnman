@@ -20,6 +20,8 @@ bdg = bridgmanite_boukare()
 stv = stishovite_boukare()
 liq = melt_boukare()
 
+mpv = bdg.endmembers[0][0]
+fpv = bdg.endmembers[1][0]
 
 per = fper.endmembers[0][0]
 wus = fper.endmembers[1][0]
@@ -102,7 +104,7 @@ plt.show()
 fper.set_composition([0.9, 0.1])
 fper.set_state(100.e9, 2000)
 
-
+"""
 #bdg = burnman.minerals.SLB_2011.mg_fe_perovskite()
 #fper = burnman.minerals.SLB_2011.ferropericlase()
 # M_FeO = 0.071844 kg/mol
@@ -128,6 +130,133 @@ plt.xlabel('Temperature (K)')
 plt.ylabel('[p$_{FeSiO_3}$p$_{MgO}$]/[p$_{MgSiO_3}$p$_{FeO}$]')
 plt.savefig('Fe_Mg_partitioning_Boukare_solids.pdf')
 plt.show()
+"""
+
+# FeO-SiO2 phase diagram
+P = 130.e9
+temperatures = np.linspace(3400., 3700., 7)
+composition = {'Fe': 0.99, 'Si': 0.01, 'O': 1.01}
+liq.guess = np.array([0.99, 0., 0.01])
+
+assemblage = burnman.Composite([wus, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+
+composition = {'Fe': 0.01, 'Si': 0.99, 'O': 1.99}
+liq.guess = np.array([0.01, 0., 0.99])
+
+temperatures = np.linspace(3400., 5200., 7)
+assemblage = burnman.Composite([stv, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+plt.xlim(0., 1.)
+plt.show()
+
+
+
+# MgO-SiO2 phase diagram
+P = 130.e9
+temperatures = np.linspace(4800., 7400., 7)
+composition = {'Mg': 0.99, 'Si': 0.01, 'O': 1.01}
+liq.guess = np.array([0.0, 0.99, 0.01])
+
+assemblage = burnman.Composite([per, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+
+composition = {'Mg': 0.01, 'Si': 0.99, 'O': 1.99}
+liq.guess = np.array([0., 0.01, 0.99])
+
+temperatures = np.linspace(4400., 5200., 7)
+assemblage = burnman.Composite([stv, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+
+
+composition = {'Mg': 0.49, 'Si': 0.51, 'O': 1.51}
+liq.guess = np.array([0., 0.49, 0.51])
+
+temperatures = np.linspace(4400., 4900., 7)
+assemblage = burnman.Composite([mpv, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+
+
+composition = {'Mg': 0.51, 'Si': 0.49, 'O': 1.49}
+liq.guess = np.array([0., 0.51, 0.49])
+
+temperatures = np.linspace(4400., 4900., 7)
+assemblage = burnman.Composite([mpv, liq])
+assemblage.set_state(P, 3000.)
+equality_constraints = [('P', P), ('T', temperatures)]
+sols, prm = equilibrate(composition, assemblage,
+                       equality_constraints,
+                       initial_state_from_assemblage=True,
+                       store_iterates=False)
+T, Si_melt = np.array([[sol.x[1], sol.x[-1]] for sol in sols]).T
+
+plt.plot(Si_melt, T, label='{0} GPa'.format(P/1.e9))
+plt.xlim(0., 1.)
+plt.show()
+
+
+exit()
+
+# pressures, XFeOs
+pressures = np.linspace(100.e9, 140.e9, 6)
+x_Fe = 0.4
+for press in pressures:
+    composition = {'Fe': 2.*x_Fe, 'Mg': 2.*(1. - x_Fe), 'Si': 1.5, 'O': 5.}
+    
+    bdg.guess = np.array([1. - x_Fe, x_Fe])
+    fper.guess = np.array([1. - x_Fe, x_Fe])
+    x_Si = 0.5
+    liq.guess = np.array([x_Fe*2.*(1 - x_Si), (1. - x_Fe/2.)*(1 - x_Si), x_Si])
+    assemblage = burnman.Composite([bdg, fper, liq])
+    assemblage.set_state(press, 3500.)
+    equality_constraints = [('P', press), ('phase_proportion', (liq, np.array([0.])))]
+    sol, prm = equilibrate(composition, assemblage, equality_constraints, initial_state_from_assemblage=True, store_iterates=False)
+    #P, T, x_bdg, p_fbdg, x_per, p_wus = np.array([s.x for s in sol]).T
+    print(assemblage)
+    #plt.plot(T, p_fbdg*(1. - p_wus)/((1. - p_fbdg)*p_wus), label='{0} GPa'.format(press/1.e9))
+
+exit()
+
 
 
 FeO_melting_curve = np.loadtxt('boukare_melting_curves_FeO.dat')

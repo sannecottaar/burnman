@@ -272,14 +272,38 @@ T0 = 0.
 Pref = 20.e9
 Tref = 1500.
 
-E0_13 = -100885.
-E0_23 = -49.e3
-V0_13 = 8.8e-8
-V0_23 = 1.9e-7
-S0_13 = 4.5
+
+# NOTE: The following input doesn't seem to match de Koker and Stixrude at all...
+# Input
+W0_13 = -125.e3
+V1_13 = 0.088e-6
+S1_13 = 30.
+S2_13 = 1.3e-3 # was +17.e-3 in paper, which would indicate a 17 J/mol entropy change for every 1000 K (i.e. ~8.5 J/K/mol over 2000 K in the center of the binary)!
+
+# W = W_E + W_V*(P - P_ref) - W_S*(T - T_ref) - S_2*(T - T_ref)^2
+# W = (W_E - W_V*Pref + W_S*Tref - S_2*T_ref*T_ref) +
+#     W_V*P - (W_S - 2.*S_2*Tref) * T -
+#     S_2*T*T
+
+
+# 0 K, 0 GPa
+E0_13 = W0_13 - V1_13*Pref + S1_13*Tref - S2_13*Tref*Tref # poss +ve?
+V0_13 = V1_13
+S0_13 = S1_13 - 2.*S2_13*Tref
+dSdT_13 = -S2_13
+
+
+# Input
+V0_23 = 0.19e-6
+
+# 0 K, 0 GPa
+E0_23 = -45.2e3 - V0_23*Pref
 S0_23 = 0.
-dSdT_13 = 17.e-3
 dSdT_23 = 0.
+
+
+
+
 
 #print([E0_13 - Tref*S0_13 - Tref*Tref*dSdT_13/2. + Pref*V0_13,
 #       E0_23 - Tref*S0_23 - Tref*Tref*dSdT_23/2. + Pref*V0_23])
@@ -304,7 +328,24 @@ class melt_boukare(SolidSolution):
         SolidSolution.__init__(self, molar_fractions=molar_fractions)
 
 
+class melt_boukare_simpler(SolidSolution):
+    def __init__(self, molar_fractions=None):
+        self.name = 'FMS melt'
+        self.solution_type = 'symmetric'
+        self.endmembers = [[FeO_liquid_boukare(), '[Fe]O'],
+                           [MgO_liquid_boukare(), '[Mg]O'],
+                           [SiO2_liquid_boukare_tweaked(), '[Si]O2']]
+        self.energy_interaction = [[0., E0_23],
+                                   [E0_13]]
+        self.volume_interaction = [[0., V0_23],
+                                   [V0_13]]
+        self.entropy_interaction = [[0., S0_23 + 1500.*dSdT_23],
+                                    [S0_13 + 1500.*dSdT_13]]
+        SolidSolution.__init__(self, molar_fractions=molar_fractions)
 
+
+
+        
 class melt_mixed(SolidSolution):
     def __init__(self, molar_fractions=None):
         self.name = 'FMS melt'

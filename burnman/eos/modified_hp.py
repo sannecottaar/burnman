@@ -145,14 +145,11 @@ class MOD_HP_TMT(eos.EquationOfState):
 
         # EQ 13
         if pressure != params['Pref']:
-            intVdP = pressure * params['V_0'] * (
-                1. - a + (a * (np.power((1. - b * Pth), 1. - c) -
-                               np.power((1. + b * (pressure - Pth)), 1. - c)) /
-                          (b * (c - 1.) * pressure)))
+            intVdP = params['V_0']*(pressure * (1. - a) + (a * (- np.power((1. + b * (pressure - Pth)), 1. - c)) /
+                                                           (b * (c - 1.))))
             if params['Pref'] != 0.:
                 intVdP -= params['Pref'] * params['V_0'] * (
-                    1. - a + (a * (np.power((1. - b * Pth), 1. - c) -
-                                   np.power((1. + b * (params['Pref'] - Pth)), 1. - c)) /
+                    1. - a + (a * (- np.power((1. + b * (params['Pref'] - Pth)), 1. - c)) /
                               (b * (c - 1.) * params['Pref'])))
         else:
             intVdP = 0.
@@ -172,12 +169,10 @@ class MOD_HP_TMT(eos.EquationOfState):
         ksi_over_ksi_0 = einstein.molar_heat_capacity_v(temperature, params['T_einstein'], params[
                                                   'n']) / einstein.molar_heat_capacity_v(params['T_0'], params['T_einstein'], params['n'])
 
-        
+    
         if pressure != params['Pref']:
             dintVdpdT = (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-                np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
-            dintVdpdT -= (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-                np.power((1. + b * (params['Pref'] - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
+                np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. + b * (params['Pref'] - Pth)), 0. - c))
         else:
             dintVdpdT = 0.
                     
@@ -206,10 +201,13 @@ class MOD_HP_TMT(eos.EquationOfState):
         ksi_over_ksi_0 = einstein.molar_heat_capacity_v(T, T_e, n) \
                          / einstein.molar_heat_capacity_v(params['T_0'], T_e, n)
 
+        bPth = b * Pth
+        if bPth > 1.:
+            bPth = 1. - 1.e-12
         dintVdpdT = (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-            np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
+            np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. - bPth), 0. - c))
         dintVdpdT -= (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-            np.power((1. + b * (params['Pref'] - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
+            np.power((1. + b * (params['Pref'] - Pth)), 0. - c) - np.power((1. - bPth), 0. - c))
         
         dSdT0 = params['V_0'] * params['K_0'] * np.power((ksi_over_ksi_0 * params['a_0']), 2.0) * \
                 (np.power((1. + b * (pressure - Pth)), -1. - c) -

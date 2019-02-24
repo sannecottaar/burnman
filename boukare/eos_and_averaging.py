@@ -1,4 +1,6 @@
 import numpy as np
+from model_parameters import *
+
 eps = np.finfo(np.float).eps
 gas_constant = 8.31446
 
@@ -121,21 +123,13 @@ def thermodynamic_properties(pressure, temperature, params):
     
     # Integrate the gibbs free energy along the isothermal path from (Pref, T_final) to (P_final, T_final)
     if pressure != params['Pref']: # EQ 13
-        intVdP = pressure * params['V_0'] * (1. - a +
-                                             (a * (np.power((1. - b * Pth), 1. - c) -
-                                                   np.power((1. + b * (pressure - Pth)), 1. - c)) /
-                                              (b * (c - 1.) * pressure)))
-        intVdP -= params['Pref'] * params['V_0'] * (1. - a +
-                                                     (a * (np.power((1. - b * Pth), 1. - c) -
-                                                           np.power((1. + b * (params['Pref'] - Pth)), 1. - c)) /
-                                                      (b * (c - 1.) * params['Pref'])))
-
+        intVdP = params['V_0'] * ((pressure - params['Pref'])*(1. - a) +
+                                  (a * (np.power((1. + b * (params['Pref'] - Pth)), 1. - c) -
+                                        np.power((1. + b * (pressure - Pth)), 1. - c)) /
+                                   (b * (c - 1.))))
 
         dintVdpdT = (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-            np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
-        dintVdpdT -= (params['V_0'] * params['a_0'] * params['K_0'] * a * ksi_over_ksi_0) * (
-            np.power((1. + b * (params['Pref'] - Pth)), 0. - c) - np.power((1. - b * Pth), 0. - c))
-
+            np.power((1. + b * (pressure - Pth)), 0. - c) - np.power((1. + b * (params['Pref'] - Pth)), 0. - c))
                     
     else:
         intVdP = 0.
@@ -147,9 +141,7 @@ def thermodynamic_properties(pressure, temperature, params):
     volume = params['V_0']*(1 - a * (1. - np.power((1. + b * (pressure - Pth)), -1.0 * c)))
     density = params['molar_mass']/volume
 
-
     # NEW STUFF FOR K_T, alpha, Cp
-    
     C_V0 = molar_heat_capacity_v(params['T_0'], params['T_einstein'], params['n'])
     C_V = molar_heat_capacity_v(temperature, params['T_einstein'], params['n'])
     isothermal_bulk_modulus = (params['K_0'] * (1. + b * (pressure - Pth)) *
@@ -215,7 +207,7 @@ def average_solid_properties(pressure, temperature, p_fpv, p_wus, mass_f_pv):
                     
     alphas = [prp['alpha'] for prp in properties]
     volumes = [prp['V'] for prp in properties]
-    beta_Ts = [prp['beta_Ts'] for prp in properties]
+    beta_Ts = [prp['beta_T'] for prp in properties]
     C_ps = [prp['molar_C_p'] for prp in properties]
 
     V_molar = np.sum([fractions[i]*volumes[i] for i in range(4)])
@@ -242,7 +234,7 @@ def average_melt_properties(pressure, temperature, p_feliq):
                     
     alphas = [prp['alpha'] for prp in properties]
     volumes = [prp['V'] for prp in properties]
-    beta_Ts = [prp['beta_Ts'] for prp in properties]
+    beta_Ts = [prp['beta_T'] for prp in properties]
     C_ps = [prp['molar_C_p'] for prp in properties]
 
     V_molar = np.sum([fractions[i]*volumes[i] for i in range(2)])
@@ -267,12 +259,12 @@ def average_composite_properties(pressure, temperature, p_fpv, p_wus, p_feliq, m
     molar_masses = [prp['molar mass'] for prp in properties]
     alphas = [prp['alpha'] for prp in properties]
     volumes = [prp['V'] for prp in properties]
-    beta_Ts = [prp['beta_Ts'] for prp in properties]
+    beta_Ts = [prp['beta_T'] for prp in properties]
     C_ps = [prp['molar_C_p'] for prp in properties]
 
     
-    n_moles = (1. - phi)/molar_volumes[0] + phi/molar_volumes[1]
-    fractions = [(1. - phi)/molar_volumes[0]/n_moles, phi/molar_volumes[1]/n_moles]
+    n_moles = (1. - phi)/volumes[0] + phi/volumes[1]
+    fractions = [(1. - phi)/volumes[0]/n_moles, phi/volumes[1]/n_moles]
 
     
     V_molar = np.sum([fractions[i]*volumes[i] for i in range(2)])
@@ -284,4 +276,3 @@ def average_composite_properties(pressure, temperature, p_fpv, p_wus, p_feliq, m
             'beta_T': 1./V_molar*np.sum([fractions[i]*beta_Ts[i]*volumes[i] for i in range(2)]),
             'molar_C_p': np.sum([fractions[i]*C_ps[i] for i in range(2)]),
             'C_p_per_kilogram': np.sum([fractions[i]*C_ps[i] for i in range(2)])/M_molar} 
-

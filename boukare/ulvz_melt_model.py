@@ -22,6 +22,53 @@ def liq_sol_molar_compositions(P, T,
 
     return Xls, Xss
 
+from scipy.optimize import fsolve
+def solidus_liquidus(P, X_Fe):
+
+    
+    diff_Xl = lambda T: liq_sol_molar_compositions(P, T,
+                                                   melting_reference_pressure,
+                                                   melting_temperatures,
+                                                   melting_entropies,
+                                                   melting_volumes,
+                                                   n_mole_mix)[0] - X_Fe
+    diff_Xs = lambda T: liq_sol_molar_compositions(P, T,
+                                                   melting_reference_pressure,
+                                                   melting_temperatures,
+                                                   melting_entropies,
+                                                   melting_volumes,
+                                                   n_mole_mix)[1] - X_Fe
+    return fsolve(diff_Xs, 4000.)[0], fsolve(diff_Xl, 4000.)[0]
+
+
+def melting_enthalpy(P, T, X_bulk,
+                     melting_reference_pressure,
+                     melting_temperatures,
+                     melting_entropies,
+                     melting_volumes,
+                     n_mole_mix):
+    
+    # arrays are Mg-rich endmember first
+    dG = ((melting_temperatures - T) * melting_entropies +
+          (P - melting_reference_pressure) * melting_volumes) # this is a linearised version (we don't use the melt and solid endmember equations of state directly).
+    
+    Xls = 1.0 - ((1.0 - np.exp(dG[1]/(n_mole_mix[1]*gas_constant*T))) /
+                 (np.exp(dG[0]/(n_mole_mix[0]*gas_constant*T)) -
+                  np.exp(dG[1]/(n_mole_mix[1]*gas_constant*T))))
+           
+    Xss = Xls * np.exp(dG[1]/(n_mole_mix[1]*gas_constant*T))
+
+    
+    dH = (melting_temperatures * melting_entropies +
+          (P - melting_reference_pressure) * melting_volumes)
+    if X_bulk < Xss:
+        H = 0.
+    elif X_bulk > Xls:
+        H = np.array([1. - X_bulk, X_bulk]).dot(dH)
+    else:
+        H = (X_bulk - Xss)/(Xls - Xss)*np.array([1. - Xls, Xls]).dot(dH)
+    return H
+
 def calculate_endmember_proportions_volumes_masses(pressure, temperature,
                                                    x_Fe_in_solid, x_Fe_in_melt, porosity,
                                                    c_mantle):
@@ -67,7 +114,7 @@ def calculate_endmember_proportions_volumes_masses(pressure, temperature,
     molar_mass_fper = p_wus*wus_params['molar_mass'] + (1. - p_wus)*per_params['molar_mass']
     molar_mass_pv = p_fpv*fpv_params['molar_mass'] + (1. - p_fpv)*mpv_params['molar_mass']
     molar_mass_melt = (x_Fe_in_melt * fe_mantle_melt_params['molar_mass'] +
-                       (1. - x_Fe_in_melt) * fe_mantle_melt_params['molar_mass'])
+                       (1. - x_Fe_in_melt) * mg_mantle_melt_params['molar_mass'])
     
     # 5) Molar volume of the solid phases
     mpv_volume = thermodynamic_properties(pressure, temperature, mpv_params)['V']
@@ -138,8 +185,6 @@ def calculate_xfe_in_solid_from_molar_proportions(endmember_proportions, c_mantl
 
     x_Fe = molar_FeO / c_mantle[1]['FeO']
     return x_Fe
-
-
 
 
 ################# BEGIN PLOTS ######################
@@ -248,3 +293,73 @@ ax[2].set_ylabel('$\Delta V_{melting}$ (cm$^3$/mol_cations)')
     
 plt.show()
 
+
+
+##########################################
+############### BENCHMARK ################
+##########################################
+X_Fe = 0.2
+P = 120.e9
+
+print('At {0} GPa and X_Fe = {1}:'.format(P/1.e9, X_Fe))
+print('deltaH_fusion = {0} J/mol'.format(np.array([1. - X_Fe, X_Fe]).dot((melting_temperatures *
+                                                                            melting_entropies +
+                                                                            (P - melting_reference_pressure) * melting_volumes))))
+
+molar_mass_melt = calculate_endmember_proportions_volumes_masses(P, 3000.,
+                                                                 X_Fe, X_Fe,
+                                                                 0., c_mantle)[2]['melt']
+print('molar_mass of melt is {0} kg/mol'.format(molar_mass_melt))
+print('Thus deltaH_fusion = {0} J/kg'.format(np.array([1. - X_Fe, X_Fe]).dot((melting_temperatures * melting_entropies +
+                                                                          (P - melting_reference_pressure) * melting_volumes))/
+                                         molar_mass_melt))
+
+solidus, liquidus = solidus_liquidus(P, X_Fe)
+
+print('the solidus and liquidus are at {0} and {1} K'.format(solidus, liquidus))
+
+temperatures = np.linspace(solidus, liquidus, 101)
+heat_capacities = np.empty_like(temperatures)
+for i, T in enumerate(temperatures):
+    p, v, m = calculate_endmember_proportions_volumes_masses(P, T,
+                                                             X_Fe, X_Fe,  0., # (completely solid)
+                                                             c_mantle)
+    
+    heat_capacities[i] = (p['mpv']*thermodynamic_properties(P, T, mpv_params)['molar_C_p'] + 
+                          p['fpv']*thermodynamic_properties(P, T, fpv_params)['molar_C_p'] + 
+                          p['per']*thermodynamic_properties(P, T, per_params)['molar_C_p'] + 
+                          p['wus']*thermodynamic_properties(P, T, wus_params)['molar_C_p'])/m['solid']
+
+heat_capacities2 = np.empty_like(temperatures)
+for i, T in enumerate(temperatures):
+    p, v, m = calculate_endmember_proportions_volumes_masses(P, T,
+                                                             X_Fe, X_Fe,  1., # (completely liq)
+                                                             c_mantle)
+
+    heat_capacities2[i] = (p['mg_melt']*thermodynamic_properties(P, T, mg_mantle_melt_params)['molar_C_p'] + 
+                          p['fe_melt']*thermodynamic_properties(P, T, fe_mantle_melt_params)['molar_C_p'])/m['melt']
+
+
+plt.plot(temperatures, heat_capacities)
+plt.plot(temperatures, heat_capacities2)
+plt.show()
+print('')
+print('The heat capacity of the solid is ~{0} J/K/kg across the melting interval'.format(heat_capacities[51]))
+print('This corresponds to an enthalpy change of {0} J/kg.'.format(np.trapz(heat_capacities, temperatures)))
+
+
+
+temperatures = np.linspace(solidus-1., liquidus+1., 1001)
+enthalpies = np.empty_like(temperatures)
+
+#for X_Fe in [0.2, 0.4, 0.6, 0.8]:
+for i, T in enumerate(temperatures):
+    enthalpies[i] = melting_enthalpy(P, T, X_Fe,
+                                     melting_reference_pressure,
+                                     melting_temperatures,
+                                     melting_entropies,
+                                     melting_volumes,
+                                     n_mole_mix)
+        
+plt.plot(temperatures, np.gradient(enthalpies, temperatures))
+plt.show()

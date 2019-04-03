@@ -349,6 +349,30 @@ plt.plot(temperatures, heat_capacities, linestyle='--', color='blue', linewidth=
 heat_capacities = mg_melt.evaluate(['C_p'], pressures, temperatures)[0]
 plt.plot(temperatures, heat_capacities, linestyle='--', color='red', linewidth=3)
 
+
+
+heat_capacities = mg_mantle.evaluate(['C_p'], pressures, temperatures)[0]
+plt.plot(temperatures, heat_capacities, linestyle='-', color='red')
+
 #plt.ylim(0., )
 
 plt.show()
+
+print(mpv.params)
+print(fpv.params)
+print(per.params)
+print(wus.params)
+print(mg_melt.params)
+
+from model_parameters import *
+from eos_and_averaging import thermodynamic_properties
+mg_melt.set_state(100.e9, 3000.)
+
+print(thermodynamic_properties(100.e9, 3000., mg_mantle_melt_params)['molar_C_p'])
+print(mg_melt.C_p)
+
+
+
+
+print(n_mpv*thermodynamic_properties(100.e9, 3000., mpv_params)['molar_C_p'] + 
+      n_per*thermodynamic_properties(100.e9, 3000., per_params)['molar_C_p'])

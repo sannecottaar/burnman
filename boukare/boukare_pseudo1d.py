@@ -17,7 +17,7 @@ from burnman.minerals.boukare import bridgmanite_boukare, ferropericlase_boukare
 
 fper = ferropericlase_boukare()
 bdg = bridgmanite_boukare()
-#stv = stishovite_boukare()
+stv = stishovite_boukare()
 liq = melt_boukare()
 
 
@@ -30,9 +30,13 @@ liquidi = np.empty_like(X_Mgs)
 melting_entropy = np.empty_like(X_Mgs)
 melting_volume = np.empty_like(X_Mgs) 
 density_solid = np.empty_like(X_Mgs) 
+density_liquid = np.empty_like(X_Mgs) 
 c_MgO = np.empty_like(X_Mgs) 
 c_FeO = np.empty_like(X_Mgs) 
 c_SiO2 = np.empty_like(X_Mgs) 
+c_MgO2 = np.empty_like(X_Mgs) 
+c_FeO2 = np.empty_like(X_Mgs) 
+c_SiO22 = np.empty_like(X_Mgs) 
 
 solid_assemblage = burnman.Composite([fper, bdg])
 assemblage = burnman.Composite([fper, bdg, liq])
@@ -63,6 +67,7 @@ for P in [120.e9]:
                                initial_state_from_assemblage=True,
                                initial_composition_from_assemblage=True,
                                store_iterates=False)
+        
         
         liquidus_T = sol.x[1]
         x_MgO, x_SiO2 = sol.x[-2:]
@@ -109,13 +114,59 @@ for P in [120.e9]:
         melting_entropy[i] = liq.S - solid_assemblage.S*solid_assemblage.n_moles
         melting_volume[i] = liq.V - solid_assemblage.V*solid_assemblage.n_moles
         density_solid[i] = solid_assemblage.density
+        density_liquid[i] = liq.density
+
+        # And the bdg-stv-liq cotectic (just for ternary plotting)
+        composition2 = {'Mg': X_Mg, 'Fe': (1. - X_Mg), 'Si': 1.0, 'O': 2.5}
+        X_Si_guess = 0.7
+        bdg.set_composition([X_Mg, 1. - X_Mg])
+        liq.set_composition([(1. - X_Mg)*(1. - X_Si_guess), X_Mg*(1. - X_Si_guess), X_Si_guess])
+        bdg.guess = bdg.molar_fractions
+        liq.guess = liq.molar_fractions
+        assemblage2 = burnman.Composite([bdg, stv, liq])
+        assemblage2.set_state(P, 5000.)
+        assemblage2.set_fractions([0.5, 0.5, 0.])
+        
+        # Find the liquid composition and temperature at the cotectic
+        equality_constraints = [('P', P), ('phase_proportion', (liq, np.array([0.])))]
+        sol, prm = equilibrate(composition2, assemblage2,
+                               equality_constraints,
+                               initial_state_from_assemblage=True,
+                               initial_composition_from_assemblage=True,
+                               store_iterates=False)
+
+        
+        x_MgO, x_SiO2 = sol.x[-2:]
+        x_FeO = 1. - x_MgO - x_SiO2
+    
+        c_MgO2[i] = x_MgO
+        c_FeO2[i] = x_FeO        
+        c_SiO22[i] = x_SiO2
+
+    #Finally, plot the FeO-SiO2 eutectic point
+    
+    composition3 = {'Fe': 0.5, 'Si': 0.5, 'O': 1.}
+    assemblage3 = burnman.Composite([fper.endmembers[1][0], stv, liq])
+    assemblage3.set_state(P, 5000.)
+    assemblage3.set_fractions([0.5, 0.5, 0.])
+    equality_constraints = [('P', P), ('phase_proportion', (liq, np.array([0.])))]
+    sol, prm = equilibrate(composition3, assemblage3,
+                           equality_constraints,
+                           initial_state_from_assemblage=True,
+                           initial_composition_from_assemblage=True,
+                           store_iterates=False)
+    print(sol.x)
+        
+
+        
     
     ax[0].plot(x_Mg_out, solidi, label='solidus: {0} GPa'.format(P/1.e9))
     ax[0].plot(x_Mg_out, liquidi, label='liquidus: {0} GPa'.format(P/1.e9))
 
     ax[1].plot(x_Mg_out, melting_entropy, label='liquidus: {0} GPa'.format(P/1.e9))
     ax[2].plot(x_Mg_out, melting_volume*1.e6, label='liquidus: {0} GPa'.format(P/1.e9))
-    ax[3].plot(x_Mg_out, density_solid, label='liquidus: {0} GPa'.format(P/1.e9))
+    ax[3].plot(x_Mg_out, density_solid, label='solid at {0} GPa'.format(P/1.e9))
+    ax[3].plot(x_Mg_out, density_liquid, label='liquid at {0} GPa'.format(P/1.e9))
                
 for i in range(4):
     ax[i].set_xlim(0., 1.)
@@ -125,7 +176,7 @@ for i in range(4):
 ax[0].set_ylabel('Temperature (K)')
 ax[1].set_ylabel('Melting entropy (J/K/mol)')
 ax[2].set_ylabel('Melting volume (cm$^3$/mol)')
-ax[3].set_ylabel('Solid density (kg/m$^3$)')
+ax[3].set_ylabel('Density (kg/m$^3$)')
 
 
 # Now we can do some linearisation of the problem:
@@ -203,6 +254,7 @@ tax.right_axis_label("SiO$_2$", fontsize=fontsize, offset=0.14)
 tax.left_axis_label("FeO", fontsize=fontsize, offset=0.14)
 
 tax.plot(np.array([c_MgO, c_SiO2, c_FeO]).T, linewidth=2.0, label="Model cotectic")
+tax.plot(np.array([c_MgO2, c_SiO22, c_FeO2]).T, linewidth=2.0, label="Model cotectic")
 
 tax.plot(np.array([mbr_MgO, mbr_SiO2, mbr_FeO]).T, linewidth=2.0, linestyle='--', label="Linear cotectic")
 plt.show()

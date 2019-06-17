@@ -36,6 +36,80 @@ for m in [liq_MgO, liq_SiO2]:
         raise Exception('{0} EoS invalid'.format(m.name))
 
 
+
+
+
+# Melting of pyrolite
+P = 136.e9
+composition = {'Si': 0.41, 'Mg': 0.53, 'Fe': 0.06, 'O': 0.41*2 + 0.53 + 0.06}
+bdg.guess = np.array([0.94, 0.06])
+fper.guess = np.array([0.8, 0.2])
+liq.guess = np.array([0.06, 0.53, 0.41])
+liq.set_composition(liq.guess)
+
+assemblage = burnman.Composite([bdg, fper])
+assemblage.set_state(P, 4200.)
+equality_constraints = [('P', P), ('T', 4000.)]
+sols, prm = equilibrate(composition, assemblage,
+                        equality_constraints,
+                        store_iterates=False, tol=1.e-3)
+
+
+f = [assemblage.molar_fractions[0], assemblage.molar_fractions[1], 0.]
+assemblage = burnman.Composite([bdg, fper, liq], f)
+assemblage.set_state(P, 4200.)
+equality_constraints = [('P', P), ('phase_proportion', (fper, np.array([0.0])))]
+sols, prm = equilibrate(composition, assemblage,
+                        equality_constraints,
+                        initial_composition_from_assemblage=True,
+                        initial_state_from_assemblage=True,
+                        store_iterates=False, tol=1.e-3)
+
+fliq_at_fper_exhaustion = assemblage.molar_fractions[2]
+
+assemblage = burnman.Composite([bdg, fper])
+assemblage.set_state(P, 4200.)
+equality_constraints = [('P', P), ('T', 4000.)]
+sols, prm = equilibrate(composition, assemblage,
+                        equality_constraints,
+                        store_iterates=False, tol=1.e-3)
+
+f = [assemblage.molar_fractions[0], assemblage.molar_fractions[1], 0.]
+assemblage = burnman.Composite([bdg, fper, liq], f)
+assemblage.set_state(P, 4200.)
+equality_constraints = [('P', P), ('phase_proportion', (liq, np.linspace(0.0, fliq_at_fper_exhaustion, 101)))]
+sols, prm = equilibrate(composition, assemblage,
+                        equality_constraints,
+                        initial_composition_from_assemblage=True,
+                        initial_state_from_assemblage=True,
+                        store_assemblage=True,
+                        store_iterates=False, tol=1.e-3)
+
+temperatures, f_liq = np.array([[sol.assemblage.temperature, sol.assemblage.molar_fractions[2]] for sol in sols]).T
+
+plt.plot(temperatures, f_liq)
+
+
+f = [assemblage.molar_fractions[0], assemblage.molar_fractions[2]]
+assemblage = burnman.Composite([bdg, liq], f)
+assemblage.set_state(P, temperatures[-1])
+equality_constraints = [('P', P), ('phase_proportion', (liq, np.linspace(fliq_at_fper_exhaustion, 1., 11)))]
+sols, prm = equilibrate(composition, assemblage,
+                        equality_constraints,
+                        initial_composition_from_assemblage=True,
+                        initial_state_from_assemblage=True,
+                        store_assemblage=True,
+                        store_iterates=False, tol=1.e-3)
+
+temperatures, f_liq = np.array([[sol.assemblage.temperature, sol.assemblage.molar_fractions[1]] for sol in sols]).T
+
+plt.plot(temperatures, f_liq)
+
+plt.show()
+
+exit()
+
+    
 """
 liq_SiO2.params['S_0'] -= 15.
 T = 3650.

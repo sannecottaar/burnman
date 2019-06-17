@@ -675,7 +675,8 @@ def equilibrate(composition, assemblage, equality_constraints,
                 initial_state_from_assemblage = False,
                 initial_composition_from_assemblage = False, 
                 tol=1.e-3,
-                store_iterates=False, max_iterations=100.,verbose=True):
+                store_iterates=False, store_assemblage=True,
+                max_iterations=100.,verbose=True):
 
     if initial_state is None:
         initial_state = [5.e9, 1000.]
@@ -825,6 +826,9 @@ def equilibrate(composition, assemblage, equality_constraints,
                                       linear_constraints = (prm.constraint_matrix, prm.constraint_vector),
                                       tol=tol,
                                       store_iterates=store_iterates, max_iterations=max_iterations)
+
+            if store_assemblage:
+                sol.assemblage = assemblage.copy()
 
             if verbose:
                 print(sol.text)

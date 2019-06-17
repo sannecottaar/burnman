@@ -14,7 +14,6 @@ import burnman
 from burnman.equilibrate import equilibrate
 from burnman.minerals.boukare import bridgmanite_boukare, ferropericlase_boukare, stishovite_boukare, melt_boukare
 
-
 fper = ferropericlase_boukare()
 bdg = bridgmanite_boukare()
 stv = stishovite_boukare()
@@ -23,20 +22,19 @@ liq = melt_boukare()
 
 
 
-X_Mgs = np.linspace(0.6, 0.99999, 21)
-x_Mg_out = np.empty_like(X_Mgs)
-solidi = np.empty_like(X_Mgs)
-liquidi = np.empty_like(X_Mgs)
-melting_entropy = np.empty_like(X_Mgs)
-melting_volume = np.empty_like(X_Mgs) 
-density_solid = np.empty_like(X_Mgs) 
-density_liquid = np.empty_like(X_Mgs) 
-c_MgO = np.empty_like(X_Mgs) 
-c_FeO = np.empty_like(X_Mgs) 
-c_SiO2 = np.empty_like(X_Mgs) 
-c_MgO2 = np.empty_like(X_Mgs) 
-c_FeO2 = np.empty_like(X_Mgs) 
-c_SiO22 = np.empty_like(X_Mgs) 
+Xs = np.linspace(0.6, 0.99999, 21)
+solidi = np.empty_like(Xs)
+liquidi = np.empty_like(Xs)
+melting_entropy = np.empty_like(Xs)
+melting_volume = np.empty_like(Xs) 
+density_solid = np.empty_like(Xs) 
+density_liquid = np.empty_like(Xs) 
+c_MgO = np.empty_like(Xs) 
+c_FeO = np.empty_like(Xs) 
+c_SiO2 = np.empty_like(Xs) 
+c_MgO2 = np.empty_like(Xs) 
+c_FeO2 = np.empty_like(Xs) 
+c_SiO22 = np.empty_like(Xs) 
 
 solid_assemblage = burnman.Composite([fper, bdg])
 assemblage = burnman.Composite([fper, bdg, liq])
@@ -45,20 +43,26 @@ assemblage = burnman.Composite([fper, bdg, liq])
 fig = plt.figure()
 ax = [fig.add_subplot(2, 2, i) for i in range(1, 5)]
 
+
 #for P in np.linspace(110.e9, 140.e9, 4):
 for P in [120.e9]:
-    for i, X_Mg in enumerate(X_Mgs):
-    
-        composition = {'Mg': X_Mg, 'Fe': (1. - X_Mg), 'Si': 0.5, 'O': 2.}
+    for i, x in enumerate(Xs):
+
+
+        # The composition should be fairly close to the cotectic,
+        # but we calculate the cotectic composition here anyway
+        composition = {'Mg': x, 'Fe': (1. - x), 'Si': 0.5, 'O': 2.}
+        assemblage.set_state(P, 5000.)
+        assemblage.set_fractions([0.5, 0.5, 0.])
+        
         X_Si_guess = 0.4
-        fper.set_composition([X_Mg, 1. - X_Mg])
-        bdg.set_composition([X_Mg, 1. - X_Mg])
-        liq.set_composition([(1. - X_Mg)*(1. - X_Si_guess), X_Mg*(1. - X_Si_guess), X_Si_guess])
+        MgO = composition['Mg']/(composition['Mg'] + composition['Fe'])
+        fper.set_composition([MgO, 1. - MgO])
+        bdg.set_composition([MgO, 1. - MgO])
+        liq.set_composition([(1. - x)*(1. - X_Si_guess), x*(1. - X_Si_guess), X_Si_guess])
         fper.guess = fper.molar_fractions
         bdg.guess = bdg.molar_fractions
         liq.guess = liq.molar_fractions
-        assemblage.set_state(P, 5000.)
-        assemblage.set_fractions([0.5, 0.5, 0.])
         
         # First, let's find the liquid composition and temperature at the cotectic
         equality_constraints = [('P', P), ('phase_proportion', (liq, np.array([0.])))]
@@ -67,13 +71,12 @@ for P in [120.e9]:
                                initial_state_from_assemblage=True,
                                initial_composition_from_assemblage=True,
                                store_iterates=False)
-        
-        
+
         liquidus_T = sol.x[1]
         x_MgO, x_SiO2 = sol.x[-2:]
         x_FeO = 1. - x_MgO - x_SiO2
-        
-        # Now, let's find the solidus at that composition:
+
+        # Now, let's find the solidus temperature at that composition:
         composition = {'Mg': x_MgO, 'Fe': x_FeO, 'Si': x_SiO2, 'O': 1. + x_SiO2}
         
         c_MgO[i] = x_MgO
@@ -93,8 +96,7 @@ for P in [120.e9]:
                                initial_composition_from_assemblage=False,
                                store_iterates=False)
         solidus_T = sol.x[1]
-        
-        x_Mg_out[i] = X_Mg
+    
         solidi[i] = solidus_T
         liquidi[i] = liquidus_T
 
@@ -156,17 +158,8 @@ for P in [120.e9]:
                            initial_composition_from_assemblage=True,
                            store_iterates=False)
     print(sol.x)
-        
 
-        
-    
-    ax[0].plot(x_Mg_out, solidi, label='solidus: {0} GPa'.format(P/1.e9))
-    ax[0].plot(x_Mg_out, liquidi, label='liquidus: {0} GPa'.format(P/1.e9))
-
-    ax[1].plot(x_Mg_out, melting_entropy, label='liquidus: {0} GPa'.format(P/1.e9))
-    ax[2].plot(x_Mg_out, melting_volume*1.e6, label='liquidus: {0} GPa'.format(P/1.e9))
-    ax[3].plot(x_Mg_out, density_solid, label='solid at {0} GPa'.format(P/1.e9))
-    ax[3].plot(x_Mg_out, density_liquid, label='liquid at {0} GPa'.format(P/1.e9))
+    # Plotting used to be here
                
 for i in range(4):
     ax[i].set_xlim(0., 1.)
@@ -180,18 +173,17 @@ ax[3].set_ylabel('Density (kg/m$^3$)')
 
 
 # Now we can do some linearisation of the problem:
-mask = [i for i, x in enumerate(x_Mg_out) if x > 0.25]
+mask = [i for i, x in enumerate(c_MgO) if x > 0.25]
 
 from scipy.optimize import curve_fit
 func_linear = lambda x, a, b: (1. - x)*a + x*b
 func_quadratic = lambda x, c: c*x*(1. - x)
 
-mbr_MgO, _ = curve_fit(func_linear, x_Mg_out[mask], c_MgO[mask])
-mbr_FeO, _ = curve_fit(func_linear, x_Mg_out[mask], c_FeO[mask])
-mbr_SiO2, _ = curve_fit(func_linear, x_Mg_out[mask], c_SiO2[mask])
-mbr_S, _ = curve_fit(func_linear, x_Mg_out[mask], melting_entropy[mask])
-mbr_V, _ = curve_fit(func_linear, x_Mg_out[mask], melting_volume[mask])
-
+mbr_MgO, _ = curve_fit(func_linear, c_SiO2[mask], c_MgO[mask])
+mbr_FeO, _ = curve_fit(func_linear, c_SiO2[mask], c_FeO[mask])
+mbr_SiO2, _ = curve_fit(func_linear, c_SiO2[mask], c_SiO2[mask])
+mbr_S, _ = curve_fit(func_linear, c_SiO2[mask], melting_entropy[mask])
+mbr_V, _ = curve_fit(func_linear, c_SiO2[mask], melting_volume[mask])
 
 # One end should have c_MgO = 0, the other should have c_FeO as zero
 x = np.array([mbr_MgO[0]/(mbr_MgO[0] - mbr_MgO[1]),
@@ -200,8 +192,20 @@ x = np.array([mbr_MgO[0]/(mbr_MgO[0] - mbr_MgO[1]),
 mbr_MgO = func_linear(x, *mbr_MgO)
 mbr_FeO = func_linear(x, *mbr_FeO)
 mbr_SiO2 = func_linear(x, *mbr_SiO2)
-#mbr_S = func_linear(x, *mbr_S) # don't tweak the endmember entropies
-#mbr_V = func_linear(x, *mbr_V) # don't tweak the endmember volumes
+mbr_S = func_linear(x, *mbr_S) 
+mbr_V = func_linear(x, *mbr_V) 
+
+Xs_out = c_MgO/mbr_MgO[1]
+    
+ax[0].plot(Xs_out, solidi, label='solidus: {0} GPa'.format(P/1.e9))
+ax[0].plot(Xs_out, liquidi, label='liquidus: {0} GPa'.format(P/1.e9))
+
+ax[1].plot(Xs_out, melting_entropy, label='liquidus: {0} GPa'.format(P/1.e9))
+ax[2].plot(Xs_out, melting_volume*1.e6, label='liquidus: {0} GPa'.format(P/1.e9))
+ax[3].plot(Xs_out, density_solid, label='solid at {0} GPa'.format(P/1.e9))
+ax[3].plot(Xs_out, density_liquid, label='liquid at {0} GPa'.format(P/1.e9))
+
+
 
 print(mbr_MgO)
 print(mbr_FeO)
@@ -213,26 +217,56 @@ print(solidi[-1])
 R = 8.31446
 Pref = 120.e9
 P = 120.e9
-n = [0.56, 0.52] # having different "n"s would be incorrect for a solid solution, but this does a slightly better job than assuming the same number of moles mixing for each "endmember"... this model is not strictly thermodynamically correct anyway.
-mbr_melting_T = np.array([3470., solidi[-1]])
-temperatures = np.linspace(mbr_melting_T[0], mbr_melting_T[1], 101)
+        
+def misfit(n):
+    """
+    Fit the n mole reactants and melting T/1000. of the Fe endmember
+    """
+    mbr_melting_T = np.array([n[2]*1000., solidi[-1]])
+    sig = 0
+    for i, X in enumerate(Xs_out):
 
+        if X > 0.7:
+            T = solidi[i]
+            dG = (mbr_melting_T - T) * mbr_S + (P - Pref) * mbr_V
+            Xls = 1.0 - (1.0 - np.exp(dG[1]/(n[1]*R*T)))/(np.exp(dG[0]/(n[0]*R*T)) -
+                                                          np.exp(dG[1]/(n[1]*R*T)))
+            Xss = Xls * np.exp(dG[1]/(n[1]*R*T))
+            sig += np.power(Xss - Xs_out[i], 2.)
+
+        if X < 0.5:
+            T = liquidi[i]
+            dG = (mbr_melting_T - T) * mbr_S + (P - Pref) * mbr_V
+            Xls = 1.0 - (1.0 - np.exp(dG[1]/(n[1]*R*T)))/(np.exp(dG[0]/(n[0]*R*T)) -
+                                                          np.exp(dG[1]/(n[1]*R*T)))
+            sig += np.power(Xls - Xs_out[i], 2.)
+    return sig
+
+from scipy.optimize import minimize
+sol = minimize(misfit, [0.5, 0.5, 3.47]).x
+n = sol[0:2]
+mbr_melting_T = np.array([sol[2]*1000., solidi[-1]])
+
+temperatures = np.linspace(mbr_melting_T[0], mbr_melting_T[1], 101)
+    
 Xls = np.empty_like(temperatures)
 Xss = np.empty_like(temperatures)
 for i, T in enumerate(temperatures):
     dG = (mbr_melting_T - T) * mbr_S + (P - Pref) * mbr_V
     Xls[i] = 1.0 - (1.0 - np.exp(dG[1]/(n[1]*R*T)))/(np.exp(dG[0]/(n[0]*R*T)) -
-                                                  np.exp(dG[1]/(n[1]*R*T)))
+                                                     np.exp(dG[1]/(n[1]*R*T)))
     Xss[i] = Xls[i] * np.exp(dG[1]/(n[1]*R*T))
-
+    
 ax[0].plot(Xls, temperatures, linestyle='--')
 ax[0].plot(Xss, temperatures, linestyle='--')
+
+ax[0].legend()
 
 xs = np.linspace(0., 1., 101)
 ax[1].plot(xs, mbr_S.dot(np.array([1 - xs, xs])), linestyle='--')
 ax[2].plot(xs, mbr_V.dot(np.array([1 - xs, xs]))*1.e6, linestyle='--')
 
-print(mbr_MgO, mbr_FeO, mbr_SiO2, mbr_S, mbr_V, mbr_melting_T)
+print(mbr_MgO, mbr_FeO, mbr_SiO2, mbr_S, mbr_V, mbr_melting_T, n)
 
 
 

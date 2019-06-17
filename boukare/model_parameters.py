@@ -113,13 +113,23 @@ mg_mantle_melt_params={'a_0': 2.0572748142847914e-05,
 ################# BEGIN MELT MODEL PARAMETERS ###################
 # All the lists are Mg endmember first, then Fe endmember
 c_mantle = [{'MgO': 0.581, 'SiO2': 0.419},
-            {'FeO': 0.908, 'SiO2': 0.092}] # molar_proportions
+            {'FeO': 0.907, 'SiO2': 0.093}] # molar_proportions
 
 melting_reference_pressure = 120.e9 # Pa
-melting_temperatures=np.array([4821.2, 3470.0]) # K 
+melting_temperatures=np.array([4821.2, 3424.5]) # K 
 melting_entropies=np.array([34.33, 33.77]) # J/K/mol-cations
 melting_volumes=np.array([9.29e-08, 1.51e-07]) # m^3/mol-cations
-n_mole_mix = np.array([0.52, 0.56]) # having different "n"s would be incorrect for a solid solution, but this does a slightly better job than assuming the same number of moles mixing for each "endmember"... this model is not strictly thermodynamically correct anyway.
+n_mole_mix = np.array([0.62, 0.48]) # having different "n"s would be incorrect for a solid solution, but this does a slightly better job than assuming the same number of moles mixing for each "endmember"... this model is not strictly thermodynamically correct anyway.
 
 
 ################# END MELT MODEL PARAMETERS ###################
+
+
+########### NOTE FOR BULK COMPOSITION OF PYROLITE #############
+
+x = 0.93
+c_pyrolite = {'FeO': 0.908*(1. - x), 'MgO': 0.581*x, 'SiO2': 0.419*x + 0.092*(1. - x)}
+
+#print('Fe/Si: {0}'.format(c_pyrolite['FeO']/c_pyrolite['SiO2']))
+#print('Mg/Si: {0}'.format(c_pyrolite['MgO']/c_pyrolite['SiO2']))
+print('Fe/Mg: {0} ({1})'.format(c_pyrolite['FeO']/c_pyrolite['MgO'], 5.8/50.))

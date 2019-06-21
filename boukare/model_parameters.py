@@ -108,6 +108,26 @@ mg_mantle_melt_params={'a_0': 2.0572748142847914e-05,
                        'equation_of_state': 'mod_hp_tmt',
                        'n': 2.419,
                        'formula': {'O': 1.419, 'Mg': 0.581, 'Si': 0.419}}
+
+
+volatile_mantle_melt_params={'a_0': 2.0572748142847914e-05,
+                             'K_0': 231645314972.72287,
+                             'Pref': 100.e9,
+                             'Cp_Pref': np.array([ 7.95326013e+01, -2.41909947e-03, -1.61692272e+06, -5.62222634e+02]),
+                             'H_Pref': -538009.8593335259,
+                             'Kprime_0': 4.252832366943359,
+                             'T_0': 298.15,
+                             'T_einstein': 558.0924045503805,
+                             'Kdprime_0': -2.1381292724609374e-11,
+                             'V_0': 1.2180438865657191e-05,
+                             'name': 'volatile mantle component',
+                             'molar_mass': 0.048592178,
+                             'S_Pref': 64.88469713598576,
+                             'equation_of_state': 'mod_hp_tmt',
+                             'n': 3.,
+                             'formula': {'O': 2., 'C': 1.}}
+
+print('WARNING! volatile melt parameters not yet chosen!!')
 ##################### END EOS PARAMETERS ########################
 
 ################# BEGIN MELT MODEL PARAMETERS ###################

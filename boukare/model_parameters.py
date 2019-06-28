@@ -110,24 +110,54 @@ mg_mantle_melt_params={'a_0': 2.0572748142847914e-05,
                        'formula': {'O': 1.419, 'Mg': 0.581, 'Si': 0.419}}
 
 
-volatile_mantle_melt_params={'a_0': 2.0572748142847914e-05,
-                             'K_0': 231645314972.72287,
-                             'Pref': 100.e9,
-                             'Cp_Pref': np.array([ 7.95326013e+01, -2.41909947e-03, -1.61692272e+06, -5.62222634e+02]),
-                             'H_Pref': -538009.8593335259,
-                             'Kprime_0': 4.252832366943359,
-                             'T_0': 298.15,
-                             'T_einstein': 558.0924045503805,
-                             'Kdprime_0': -2.1381292724609374e-11,
-                             'V_0': 1.2180438865657191e-05,
-                             'name': 'volatile mantle component',
-                             'molar_mass': 0.048592178,
-                             'S_Pref': 64.88469713598576,
-                             'equation_of_state': 'mod_hp_tmt',
-                             'n': 3.,
-                             'formula': {'O': 2., 'C': 1.}}
+H2O_mantle_melt_params={'name': 'H2O melt mantle component (data from Mookherjee et al., 2008; 10.1038/nature06918)', 
+                        'equation_of_state': 'mod_hp_tmt',
+                        
+                        'Pref': 100.e9,
+                        'T_0': 298.15,
+                        
+                        'V_0': 1.086e-05,
+                        'a_0': 6.475e-05,
+                        'K_0': 73.3e9,
+                        'Kprime_0': 2.265,
+                        'Kdprime_0': -1.04e-11,
+                        
+                        'T_einstein': 242., # 0.806*300
+                        
+                        'H_Pref': 0., # not used
+                        'S_Pref': 0., # not used
+                        'Cp_Pref': np.array([74.83, 0., 0., 0.]), # not used in melt model, arbitrarily picked at 3nR (note this is technically for CV, not CP)
+                        
+                        'molar_mass': 0.01801528,
+                        'n': 3.,
+                        'formula': {'H': 2., 'O': 1.}}
 
-print('WARNING! volatile melt parameters not yet chosen!!')
+CO2_mantle_melt_params={'name': 'CO2 melt mantle component (data from Ghosh et al., 2017; 10.1038/s41598-017-00918-x)',
+                        'equation_of_state': 'mod_hp_tmt',
+                        
+                        'Pref': 100.e9,
+                        'T_0': 298.15,
+                        
+                        'V_0': 2.195e-05,
+                        'a_0': 4.97e-05,
+                        'K_0': 22.8e9,
+                        'Kprime_0': 3.87,
+                        'Kdprime_0': -1.98e-11,
+                        
+                        'T_einstein': 160., # ~0.806*200 # TDebye is 140 K at 15 K, increase a bit for HT, https://arxiv.org/pdf/1403.4403.pdf
+                        
+                        'H_Pref': 0., # not used
+                        'S_Pref': 0., # not used
+                        'Cp_Pref': np.array([74.83, 0., 0., 0.]), # not used in melt model, arbitrarily picked at 3nR (note this is technically for CV, not CP)
+                        
+                        'molar_mass': 0.04401,
+                        'n': 3.,
+                        'formula': {'C': 1., 'O': 2.}}
+
+
+volatile_mantle_melt_params = H2O_mantle_melt_params
+
+
 ##################### END EOS PARAMETERS ########################
 
 ################# BEGIN MELT MODEL PARAMETERS ###################

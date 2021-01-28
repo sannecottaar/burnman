@@ -8,44 +8,70 @@
     # Creates a plot with four subplots of temperature, melt_fraction, Vs and Vp saved as "plots_"+model_name+".pdf"
 
 """
+import sys,os
+# hack to allow scripts to be placed in subdirectories next to burnman:
+sys.path.insert(1, os.path.abspath('../'))
+sys.path.insert(1, os.path.abspath('../boukare/'))
+
 
 import glob
 import ulvz_melt_model
 from burnman import averaging_schemes
 from burnman import minerals
 import burnman
-import sys
-import os
+from burnman import Mineral
+
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 import average_solid_melt
-
-# hack to allow scripts to be placed in subdirectories next to burnman:
-sys.path.insert(1, os.path.abspath('../'))
-sys.path.insert(1, os.path.abspath('../boukare/'))
-
-# Here we import the relevant modules from BurnMan.
-
+from model_parameters import *
 
 '''
 input
 '''
 # Model to load and plot
 # 'no_motion_of_melt', 'melt_is_less_dense', 'reference', 'with_heterogeneities'
-model_name = 'reference'
+model_name = 'volume-1.7e-5'
+# Preset molar_volume value for this specific run 
+volume =1.7e-5
+
+
+# Here we import the relevant modules from BurnMan.
+
+class Fe_endmember_melt(Mineral):
+    """
+    FeO-SiO2 endmember
+    """
+    def __init__(self):
+        name = 'FeO-SiO2 endmember'
+        self.params = fe_mantle_melt_params
+        Mineral.__init__(self)
+
+class Mg_endmember_melt(Mineral):
+    """
+    MgO-SiO2 endmember
+    """
+    def __init__(self):
+        name = 'MgO-SiO2 endmember'
+        self.params = mg_mantle_melt_params
+        Mineral.__init__(self)
+
+Fe_endmember_melt_mod = Fe_endmember_melt()
+Fe_endmember_melt_mod.params['V_0'] = volume
 
 # Resample nodes
 # For quick exploration, I resample every 10 nodes.
 # I change this to 1 to make high quality plots, but computation takes a
 # while...
-resample = 10
+resample = 1
 
 '''
 load data
 '''
 # aspect files
+print(glob.glob('output/' + model_name + '/solution/mesh-*.h5'))
 mesh_file = glob.glob('output/' + model_name + '/solution/mesh-*.h5')[0]
 solution_file = glob.glob(
     'output/' +
@@ -141,8 +167,7 @@ mg_fe_perovskite = minerals.SLB_2011.mg_fe_perovskite()
 mg_fe_periclase = minerals.SLB_2011.ferropericlase()
 
 
-# Melt solution
-melt = minerals.boukare.melt_boukare()
+
 
 
 # Loop through all points
@@ -158,6 +183,9 @@ for i in range(0, len(pressures), resample):
     # construct molar compositions using boukare model
     molar_fractions_in_composite, molar_volumes, molar_masses = ulvz_melt_model.calculate_endmember_proportions_volumes_masses(
         pressures[i], temperatures[i], solid_fe[i], melt_fe[i], melt_frac[i], c_mantle)
+        
+    # initialize melt
+    melt = burnman.CombinedMineral([Mg_endmember_melt(),Fe_endmember_melt()], [1-melt_fe[i], melt_fe[i]])
 
     if melt_frac[i] < 1.:
         # construct solid composition
@@ -192,7 +220,7 @@ for i in range(0, len(pressures), resample):
             molar_frac_melt
 
         # set melt composite
-        melt.set_composition([frac_fe_melt, frac_mg_melt, 0.])
+        #melt.set_composition([frac_fe_melt, frac_mg_melt, 0.])
 
     # set composite including melt and solid
     if melt_frac[i] == 1.:
@@ -269,10 +297,10 @@ write out velocities and densities
 '''
 # Save computed velocities and density
 if resample == 1:
-    outfile = 'output/' + model_name + '/solution/seismic_velocities.h5'
+    outfile = 'output/' + model_name + '/solution/seismic_velocities_correcteddensity.h5'
 else:
     outfile = 'output/' + model_name + \
-        '/solution/seismic_velocities_res' + str(resample) + '.h5'
+        '/solution/seismic_velocities_res' + str(resample) + '_correcteddensity.h5'
 with h5.File(outfile, "w") as f:
     f.create_dataset("x", data=x[::resample])
     f.create_dataset("y", data=y[::resample])
